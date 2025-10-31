@@ -28,7 +28,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const wan_access = req.body.wan_access !== undefined ? req.body.wan_access : true;
     const description = sanitizeText(req.body.description);
     const ports = req.body.ports ? JSON.stringify(req.body.ports.slice(0, 10)) : '[]'; // Max 10 ports
-    const interface_type = req.body.interface && ['Wi-Fi', 'ETH'].includes(req.body.interface) ? req.body.interface : 'ETH';
+    const interface_type = req.body.interface && ['WLAN', 'ETH'].includes(req.body.interface) ? req.body.interface : 'WLAN';
 
     const result = await pool.query(
       'INSERT INTO devices (ip, mac, vlan_id, wan_access, description, ports, interface) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7) RETURNING *',
@@ -52,7 +52,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const wan_access = req.body.wan_access !== undefined ? req.body.wan_access : true;
     const description = sanitizeText(req.body.description);
     const ports = req.body.ports ? JSON.stringify(req.body.ports.slice(0, 10)) : '[]'; // Max 10 ports
-    const interface_type = req.body.interface && ['Wi-Fi', 'ETH'].includes(req.body.interface) ? req.body.interface : 'ETH';
+    const interface_type = req.body.interface && ['WLAN', 'ETH'].includes(req.body.interface) ? req.body.interface : 'WLAN';
 
     const result = await pool.query(
       'UPDATE devices SET ip = $1, mac = $2, vlan_id = $3, wan_access = $4, description = $5, ports = $6::jsonb, interface = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8 RETURNING *',

@@ -9,6 +9,7 @@ import deviceRoutes from './routes/devices.js';
 import vlanRoutes from './routes/vlans.js';
 import userRoutes from './routes/users.js';
 import switchRoutes from './routes/switches.js';
+import vlanReservationRoutes from './routes/vlan-reservations.js';
 import { initDatabase } from './models/init.js';
 import { securityMiddleware, rateLimiter } from './middleware/security.js';
 
@@ -54,6 +55,7 @@ app.use('/api/devices', deviceRoutes);
 app.use('/api/vlans', vlanRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/switches', switchRoutes);
+app.use('/api/vlan-reservations', vlanReservationRoutes);
 
 // Serve static files from React build
 app.use(express.static(path.join(__dirname, '../public')));

@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, ArrowUpDown } from 'lucide-react';
+import VlanReservations from './VlanReservations';
 
 export default function DeviceTable({ token, isAdmin }) {
   const [devices, setDevices] = useState([]);
   const [vlans, setVlans] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
+  const [formData, setFormData] = useState({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'WLAN' });
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('vlan');
   const [filterWan, setFilterWan] = useState('all');
   const [selectedVlan, setSelectedVlan] = useState(null);
+  const [showReservations, setShowReservations] = useState(false);
 
   useEffect(() => {
     fetchDevices();
@@ -26,6 +28,11 @@ export default function DeviceTable({ token, isAdmin }) {
       setSelectedVlan(smallestVlan.vlan_id);
     }
   }, [vlans]);
+
+  useEffect(() => {
+    // VLAN değiştiğinde rezervasyon tablosunu kapat
+    setShowReservations(false);
+  }, [selectedVlan]);
 
   const fetchDevices = async () => {
     try {
@@ -99,7 +106,7 @@ export default function DeviceTable({ token, isAdmin }) {
         await fetchDevices(); // await ekledim
         setShowForm(false);
         setEditingId(null);
-        setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
+        setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'WLAN' });
         setError('');
       } else {
         setError(data.error || 'Operation failed');
@@ -118,7 +125,7 @@ export default function DeviceTable({ token, isAdmin }) {
       wan_access: device.wan_access,
       description: device.description || '',
       ports: device.ports || [],
-      interface: device.interface || 'ETH'
+      interface: device.interface || 'WLAN'
     });
     setShowForm(true);
   };
@@ -143,7 +150,7 @@ export default function DeviceTable({ token, isAdmin }) {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
+    setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'WLAN' });
     setError('');
   };
 
@@ -215,7 +222,21 @@ export default function DeviceTable({ token, isAdmin }) {
 
           {isAdmin && !showForm && (
             <button
-              onClick={() => setShowForm(true)}
+              onClick={() => {
+                setShowForm(true);
+                // Eğer VLAN filtrelenmişse, otomatik olarak o VLAN'ı seç
+                if (selectedVlan && selectedVlan !== 'all') {
+                  const selectedVlanObj = vlans.find(v => v.vlan_id === selectedVlan);
+                  if (selectedVlanObj) {
+                    const prefix = selectedVlanObj.network_prefix || '192.168';
+                    setFormData({
+                      ...formData,
+                      vlan_id: selectedVlan,
+                      ip: `${prefix}.${selectedVlan}.`
+                    });
+                  }
+                }
+              }}
               style={{
                 background: 'var(--accent-color)',
                 color: 'white',
@@ -282,6 +303,41 @@ export default function DeviceTable({ token, isAdmin }) {
           </button>
         ))}
       </div>
+
+      {/* Show/Hide IP Reservations Button */}
+      {selectedVlan && selectedVlan !== 'all' && isAdmin && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <button
+            onClick={() => setShowReservations(!showReservations)}
+            style={{
+              background: showReservations ? '#3b82f6' : 'var(--bg-secondary)',
+              color: showReservations ? 'white' : 'var(--text-primary)',
+              padding: '0.5rem 1rem',
+              border: `1px solid ${showReservations ? '#3b82f6' : 'var(--border-color)'}`,
+              borderRadius: '0.375rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              transition: 'all 0.2s'
+            }}
+          >
+            {showReservations ? '🔼 Hide IP Reservations' : '🔽 Show IP Reservations'}
+          </button>
+        </div>
+      )}
+
+      {/* VLAN Reservations - Sadece showReservations true ise göster */}
+      {selectedVlan && selectedVlan !== 'all' && isAdmin && showReservations && (
+        <div style={{
+          background: 'var(--bg-primary)',
+          padding: '1rem',
+          borderRadius: '0.5rem',
+          border: '1px solid var(--border-color)',
+          marginBottom: '1.5rem'
+        }}>
+          <VlanReservations vlanId={selectedVlan} token={token} />
+        </div>
+      )}
 
       {showForm && isAdmin && (
         <form onSubmit={handleSubmit} style={{
@@ -381,8 +437,8 @@ export default function DeviceTable({ token, isAdmin }) {
                 }}
                 required
               >
-                <option value="ETH">Ethernet (ETH)</option>
-                <option value="Wi-Fi">Wi-Fi</option>
+                <option value="WLAN">WLAN (Wireless)</option>
+                <option value="ETH">ETH (Ethernet)</option>
               </select>
             </div>
 
@@ -546,14 +602,14 @@ export default function DeviceTable({ token, isAdmin }) {
                   <td style={{ padding: '0.75rem', fontFamily: 'monospace' }}>{device.mac}</td>
                   <td style={{ padding: '0.75rem' }}>
                     <span style={{
-                      background: device.interface === 'Wi-Fi' ? '#fef3c7' : '#e0e7ff',
-                      color: device.interface === 'Wi-Fi' ? '#92400e' : '#3730a3',
+                      background: device.interface === 'WLAN' ? '#fef3c7' : '#e0e7ff',
+                      color: device.interface === 'WLAN' ? '#92400e' : '#3730a3',
                       padding: '0.25rem 0.5rem',
                       borderRadius: '0.25rem',
                       fontSize: '0.875rem',
                       fontWeight: '600'
                     }}>
-                      {device.interface || 'ETH'}
+                      {device.interface || 'WLAN'}
                     </span>
                   </td>
                   <td style={{ padding: '0.75rem' }}>

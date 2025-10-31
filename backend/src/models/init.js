@@ -85,7 +85,7 @@ export async function initDatabase() {
       ADD COLUMN IF NOT EXISTS wan_access BOOLEAN DEFAULT true,
       ADD COLUMN IF NOT EXISTS description TEXT,
       ADD COLUMN IF NOT EXISTS ports JSONB DEFAULT '[]',
-      ADD COLUMN IF NOT EXISTS interface VARCHAR(20) DEFAULT 'ETH',
+      ADD COLUMN IF NOT EXISTS interface VARCHAR(20) DEFAULT 'WLAN',
       ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     `);
@@ -125,6 +125,19 @@ export async function initDatabase() {
         CONSTRAINT unique_comm_device UNIQUE (vlan_comm_id, device_id)
       )
     `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS vlan_reservations (
+        id SERIAL PRIMARY KEY,
+        vlan_id INTEGER REFERENCES vlans(vlan_id) ON DELETE CASCADE,
+        device_type VARCHAR(100) NOT NULL,
+        group_range VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_vlan_reservations_vlan_id ON vlan_reservations(vlan_id)`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS switches (
