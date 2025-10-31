@@ -6,7 +6,7 @@ export default function DeviceTable({ token, isAdmin }) {
   const [vlans, setVlans] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [formData, setFormData] = useState({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [] });
+  const [formData, setFormData] = useState({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
   const [error, setError] = useState('');
   const [sortBy, setSortBy] = useState('vlan');
   const [filterWan, setFilterWan] = useState('all');
@@ -32,10 +32,20 @@ export default function DeviceTable({ token, isAdmin }) {
       const res = await fetch('/api/devices', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
-      setDevices(data);
+      // Parse ports if it's a string
+      const parsedData = data.map(device => ({
+        ...device,
+        ports: typeof device.ports === 'string' ? JSON.parse(device.ports) : (device.ports || [])
+      }));
+      console.log('Devices loaded:', parsedData.length);
+      setDevices(parsedData);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching devices:', err);
+      setError('Failed to load devices');
     }
   };
 
@@ -86,10 +96,11 @@ export default function DeviceTable({ token, isAdmin }) {
 
       const data = await res.json();
       if (res.ok) {
-        fetchDevices();
+        await fetchDevices(); // await ekledim
         setShowForm(false);
         setEditingId(null);
-        setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '' });
+        setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
+        setError('');
       } else {
         setError(data.error || 'Operation failed');
       }
@@ -106,7 +117,8 @@ export default function DeviceTable({ token, isAdmin }) {
       vlan_id: device.vlan_id || '',
       wan_access: device.wan_access,
       description: device.description || '',
-      ports: device.ports || []
+      ports: device.ports || [],
+      interface: device.interface || 'ETH'
     });
     setShowForm(true);
   };
@@ -131,7 +143,7 @@ export default function DeviceTable({ token, isAdmin }) {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [] });
+    setFormData({ ip: '', mac: '', vlan_id: '', wan_access: true, description: '', ports: [], interface: 'ETH' });
     setError('');
   };
 
@@ -353,13 +365,36 @@ export default function DeviceTable({ token, isAdmin }) {
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
+                Interface *
+              </label>
+              <select
+                value={formData.interface}
+                onChange={(e) => setFormData({ ...formData, interface: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '0.375rem',
+                  background: 'var(--bg-primary)',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer'
+                }}
+                required
+              >
+                <option value="ETH">Ethernet (ETH)</option>
+                <option value="Wi-Fi">Wi-Fi</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '500' }}>
                 Description
               </label>
               <input
                 type="text"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Server, PC, etc."
+                placeholder="Additional notes"
                 style={{
                   width: '100%',
                   padding: '0.5rem',
@@ -487,6 +522,7 @@ export default function DeviceTable({ token, isAdmin }) {
             <tr style={{ background: 'var(--bg-secondary)', borderBottom: '2px solid var(--border-color)' }}>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>IP Address</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>MAC Address</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>Interface</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>VLAN</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>Ports</th>
               <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.875rem' }}>WAN</th>
@@ -508,6 +544,18 @@ export default function DeviceTable({ token, isAdmin }) {
                 <tr key={device.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '0.75rem', fontFamily: 'monospace' }}>{device.ip}</td>
                   <td style={{ padding: '0.75rem', fontFamily: 'monospace' }}>{device.mac}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    <span style={{
+                      background: device.interface === 'Wi-Fi' ? '#fef3c7' : '#e0e7ff',
+                      color: device.interface === 'Wi-Fi' ? '#92400e' : '#3730a3',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.875rem',
+                      fontWeight: '600'
+                    }}>
+                      {device.interface || 'ETH'}
+                    </span>
+                  </td>
                   <td style={{ padding: '0.75rem' }}>
                     {device.vlan_id ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

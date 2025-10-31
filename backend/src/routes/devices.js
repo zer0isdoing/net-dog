@@ -28,13 +28,14 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     const wan_access = req.body.wan_access !== undefined ? req.body.wan_access : true;
     const description = sanitizeText(req.body.description);
     const ports = req.body.ports ? JSON.stringify(req.body.ports.slice(0, 10)) : '[]'; // Max 10 ports
+    const interface_type = req.body.interface && ['Wi-Fi', 'ETH'].includes(req.body.interface) ? req.body.interface : 'ETH';
 
     const result = await pool.query(
-      'INSERT INTO devices (ip, mac, vlan_id, wan_access, description, ports) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [ip, mac, vlan_id, wan_access, description, ports]
+      'INSERT INTO devices (ip, mac, vlan_id, wan_access, description, ports, interface) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7) RETURNING *',
+      [ip, mac, vlan_id, wan_access, description, ports, interface_type]
     );
 
-    await auditLog(req.user.id, 'CREATE', 'devices', result.rows[0].id, { ip, mac, vlan_id, wan_access, ports }, req.clientIp);
+    await auditLog(req.user.id, 'CREATE', 'devices', result.rows[0].id, { ip, mac, vlan_id, wan_access, ports, interface: interface_type }, req.clientIp);
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -51,13 +52,14 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const wan_access = req.body.wan_access !== undefined ? req.body.wan_access : true;
     const description = sanitizeText(req.body.description);
     const ports = req.body.ports ? JSON.stringify(req.body.ports.slice(0, 10)) : '[]'; // Max 10 ports
+    const interface_type = req.body.interface && ['Wi-Fi', 'ETH'].includes(req.body.interface) ? req.body.interface : 'ETH';
 
     const result = await pool.query(
-      'UPDATE devices SET ip = $1, mac = $2, vlan_id = $3, wan_access = $4, description = $5, ports = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $7 RETURNING *',
-      [ip, mac, vlan_id, wan_access, description, ports, id]
+      'UPDATE devices SET ip = $1, mac = $2, vlan_id = $3, wan_access = $4, description = $5, ports = $6::jsonb, interface = $7, updated_at = CURRENT_TIMESTAMP WHERE id = $8 RETURNING *',
+      [ip, mac, vlan_id, wan_access, description, ports, interface_type, id]
     );
 
-    await auditLog(req.user.id, 'UPDATE', 'devices', id, { ip, mac, vlan_id, wan_access, ports }, req.clientIp);
+    await auditLog(req.user.id, 'UPDATE', 'devices', id, { ip, mac, vlan_id, wan_access, ports, interface: interface_type }, req.clientIp);
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
